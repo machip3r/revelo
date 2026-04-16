@@ -35,6 +35,7 @@ export async function POST(request: Request) {
       .from("rooms")
       .insert({
         code,
+        is_public: false,
         status: "waiting",
         host_user_id: user.id,
         current_turn_player_id: null,

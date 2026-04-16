@@ -19,6 +19,7 @@ create table public.users (
 create table public.rooms (
   id uuid primary key default gen_random_uuid(),
   code text not null unique,
+  is_public boolean not null default false,
   status room_status not null default 'waiting',
   host_user_id uuid not null references public.users (id) on delete restrict,
   current_turn_player_id uuid,

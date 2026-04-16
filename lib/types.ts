@@ -11,6 +11,7 @@ export interface UserRow {
 export interface RoomRow {
   id: string;
   code: string;
+  is_public: boolean;
   status: RoomStatus;
   host_user_id: string;
   current_turn_player_id: string | null;

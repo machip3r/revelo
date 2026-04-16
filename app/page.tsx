@@ -91,6 +91,42 @@ export default function HomePage() {
     }
   }
 
+  async function quickMatch() {
+    if (!ready) return;
+    const n = name.trim();
+    if (n.length < 1) {
+      toast("Choose a display name first.", "err");
+      return;
+    }
+    setBusy(true);
+    try {
+      setStoredDisplayName(n);
+      const res = await fetch("/api/room/quick-join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: n }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.error ?? "Could not find public match", "err");
+        return;
+      }
+      await fetch("/api/user/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: n }),
+      });
+      toast("Public match found", "ok");
+      router.push(`/room/${data.code}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function playSolo() {
+    router.push("/solo");
+  }
+
   return (
     <div className="mx-auto flex min-h-full max-w-lg flex-col justify-center px-4 py-16">
       <div className="mb-10 text-center">
@@ -115,6 +151,24 @@ export default function HomePage() {
       </label>
 
       <div className="mt-8 space-y-3">
+        <button
+          type="button"
+          disabled={busy || !ready}
+          onClick={playSolo}
+          className="w-full rounded-xl bg-emerald-700 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-900/30 hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Solo vs bots
+        </button>
+
+        <button
+          type="button"
+          disabled={busy || !ready}
+          onClick={quickMatch}
+          className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-900/30 hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Public game
+        </button>
+
         <button
           type="button"
           disabled={busy || !ready}
