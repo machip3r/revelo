@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Revelo
 
-## Getting Started
+Revelo is a real-time multiplayer deduction game where each player has a secret shape+color combination.
+Your objective is simple: survive and outsmart everyone else.
 
-First, run the development server:
+## What the game is about
+
+- 4 to 6 players join the same room.
+- Each player receives one secret combination:
+  - Shape: `circle`, `square`, `triangle`
+  - Color: `red`, `blue`, `green`
+- Combinations are unique inside a match.
+- You only see your own combination.
+- Last alive player wins.
+
+## Current gameplay rules
+
+- On your turn, you guess another player's exact combination.
+- If your guess is exactly correct:
+  - target is eliminated
+  - you keep the turn
+- If your guess is wrong (partial or complete miss):
+  - you gain 1 error
+  - turn passes away from you
+- At 2 errors, you are eliminated.
+- Partial matches still reveal information globally:
+  - shape match reveals target shape
+  - color match reveals target color
+
+## What is already implemented
+
+- Real-time room lobby (joiners appear without refresh).
+- Real-time game board updates:
+  - turns
+  - guesses
+  - eliminations
+  - revelations
+- Host controls:
+  - start game
+  - restart game after finish
+  - close room
+- Player controls:
+  - leave lobby
+  - leave game
+- End-game full-page result with winner.
+- Modern dark UI, toasts, and loading spinner.
+
+## Local setup
+
+### 1) Install dependencies
+
+```bash
+npm install
+```
+
+### 2) Configure environment
+
+### 3) Prepare Supabase
+
+- Run SQL migration from `supabase/migrations/20260415000000_initial.sql`
+- Enable Anonymous Auth in Supabase
+
+### 4) Run app
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Product vision (next improvements)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+To make matches more dynamic and fun, planned additions include:
 
-## Learn More
+- **Minigame turn steals** in specific moments (ex: partial reveal challenge).
+- **More dramatic rounds**:
+  - comeback mechanics
+  - anti-snowball rules
+- **Game feel polish**:
+  - micro animations
+  - better sounds/feedback
+  - richer guess history storytelling
+- **Quality improvements**:
+  - better onboarding screens
+  - clearer in-game hints and rule reminders
+  - stronger test coverage
 
-To learn more about Next.js, take a look at the following resources:
+## Philosophy
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Revelo is designed to be:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- easy to understand in 1 minute
+- tense in every turn
+- social and replayable
+- fair, fast, and reactive in multiplayer
