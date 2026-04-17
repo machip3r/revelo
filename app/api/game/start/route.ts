@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_PLAYERS, MIN_PLAYERS } from "@/lib/constants";
 import { pickRandomCombinations } from "@/lib/combinationAssign";
+import { nextTurnDeadlineIso } from "@/lib/turnDeadline";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -84,11 +85,22 @@ export async function POST(request: Request) {
 
   const starter = players[Math.floor(Math.random() * players.length)]!;
 
+  const { data: turnMeta } = await admin
+    .from("players")
+    .select("id, is_bot")
+    .eq("room_id", roomId);
+
+  const deadline = nextTurnDeadlineIso(
+    starter.id,
+    turnMeta ?? [],
+  );
+
   const { error: upErr } = await admin
     .from("rooms")
     .update({
       status: "playing",
       current_turn_player_id: starter.id,
+      turn_deadline_at: deadline,
     })
     .eq("id", roomId);
 

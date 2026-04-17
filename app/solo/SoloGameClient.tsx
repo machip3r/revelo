@@ -46,6 +46,13 @@ function randomFrom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
 }
 
+/** Random delay so bot moves feel less instant (ms). */
+function randomBotDelayMs(): number {
+  const min = 1800;
+  const max = 4800;
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
+
 export function SoloGameClient() {
   const toast = useToast();
   const [players, setPlayers] = useState<SoloPlayer[]>([]);
@@ -206,7 +213,7 @@ export function SoloGameClient() {
     const t = window.setTimeout(() => {
       const { targetId, guess } = botPickGuess(actor.id);
       applyGuess(actor.id, targetId, guess);
-    }, 1200);
+    }, randomBotDelayMs());
 
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -229,20 +236,20 @@ export function SoloGameClient() {
     <div className="relative mx-auto w-full max-w-5xl flex-1 px-4 py-8">
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-100">Solo vs Bots</h1>
-          <p className="text-sm text-zinc-500">Practice mode with AI opponents.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Solo vs Bots</h1>
+          <p className="text-sm text-muted">Practice mode with AI opponents.</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={startSoloGame}
-            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
+            className="rounded-lg bg-gradient-to-r from-accent to-accent-hover px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_20px_var(--accent-glow)] hover:brightness-110"
           >
             New solo game
           </button>
           <Link
             href="/"
-            className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-900"
+            className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-surface-elevated"
           >
             Home
           </Link>
@@ -250,17 +257,17 @@ export function SoloGameClient() {
       </div>
 
       {finished ? (
-        <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-950/30 px-4 py-3 text-sm text-amber-100">
+        <div className="mb-6 rounded-xl border border-warning/35 bg-warning/10 px-4 py-3 text-sm text-foreground">
           Game finished: <span className="font-semibold">{winner?.name ?? "No winner"}</span>
         </div>
       ) : (
-        <div className="mb-6 rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-3 text-sm text-zinc-300">
+        <div className="mb-6 rounded-xl border border-border bg-surface/70 px-4 py-3 text-sm text-muted">
           {myTurn ? (
-            <span className="text-emerald-300">Your turn — make a guess.</span>
+            <span className="text-success">Your turn — make a guess.</span>
           ) : (
             <span>
               Waiting for{" "}
-              <span className="font-medium text-zinc-100">
+              <span className="font-medium text-foreground">
                 {players.find((p) => p.id === currentTurnPlayerId)?.name ?? "…"}
               </span>
               .
@@ -270,10 +277,10 @@ export function SoloGameClient() {
       )}
 
       {me && (
-        <div className="mb-4 inline-flex rounded-xl border border-violet-500/30 bg-violet-950/40 px-4 py-2 text-sm">
-          <span className="text-zinc-300">
+        <div className="mb-4 inline-flex rounded-xl border border-accent/35 bg-[var(--secret-tint)] px-4 py-2 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <span className="text-muted">
             Your secret:{" "}
-            <span className="font-semibold text-zinc-100">
+            <span className="font-semibold text-foreground">
               {combos[me.id]?.color} {combos[me.id]?.shape}
             </span>
           </span>
@@ -281,7 +288,13 @@ export function SoloGameClient() {
       )}
 
       <GameBoard
-        players={players}
+        players={players.map((p) => ({
+          id: p.id,
+          name: p.name,
+          errors: p.errors,
+          is_alive: p.is_alive,
+          is_bot: p.isBot,
+        }))}
         revelations={revelations}
         myPlayerId={MY_ID}
         currentTurnPlayerId={currentTurnPlayerId}
@@ -294,7 +307,7 @@ export function SoloGameClient() {
             <button
               type="button"
               onClick={() => setGuessOpen(true)}
-              className="rounded-xl bg-violet-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/30 hover:bg-violet-500"
+              className="rounded-xl bg-gradient-to-r from-accent to-accent-hover py-3 text-sm font-semibold text-white shadow-[0_8px_32px_var(--accent-glow)] hover:brightness-110"
             >
               Guess a bot
             </button>

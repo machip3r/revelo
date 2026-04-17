@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { COLORS, SHAPES } from "@/lib/constants";
+import { executeGuessTurn } from "@/lib/executeGuessTurn";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { processTurn } from "@/lib/gameLogic";
 import type { Color, GuessInput, Shape } from "@/lib/types";
-import { validateGuessRequest } from "@/lib/validation";
 
 function isShape(x: string): x is Shape {
   return (SHAPES as readonly string[]).includes(x);
@@ -52,13 +51,17 @@ export async function POST(request: Request) {
 
   const { data: attacker, error: aErr } = await admin
     .from("players")
-    .select("id, room_id, user_id, name, errors, is_alive, turn_order")
+    .select("id, room_id, user_id, name, errors, is_alive, turn_order, is_bot")
     .eq("room_id", roomId)
     .eq("user_id", user.id)
     .single();
 
   if (aErr || !attacker) {
     return NextResponse.json({ error: "You are not in this room" }, { status: 403 });
+  }
+
+  if (attacker.is_bot) {
+    return NextResponse.json({ error: "Bots cannot use this endpoint" }, { status: 400 });
   }
 
   if (room.current_turn_player_id !== attacker.id) {
@@ -93,140 +96,36 @@ export async function POST(request: Request) {
     .eq("player_id", targetId)
     .maybeSingle();
 
-  const validationError = validateGuessRequest({
-    attacker,
-    target,
-    guess,
-    revelationForTarget: revelation,
-  });
-  if (validationError) {
-    return NextResponse.json({ error: validationError }, { status: 400 });
-  }
-
   const { data: allPlayers, error: allErr } = await admin
     .from("players")
-    .select("id, is_alive, turn_order")
+    .select("id, is_alive, turn_order, is_bot")
     .eq("room_id", roomId);
 
   if (allErr || !allPlayers?.length) {
     return NextResponse.json({ error: "Players not loaded" }, { status: 500 });
   }
 
-  const outcome = processTurn(
-    {
+  try {
+    const result = await executeGuessTurn(admin, {
+      roomId,
       attacker,
-      target,
+      targetId,
+      guess,
       targetCombination: { shape: combo.shape, color: combo.color },
       revelationForTarget: revelation,
-      guess,
-    },
-    allPlayers,
-  );
+      target,
+      allPlayers,
+    });
 
-  let attackerErrors = attacker.errors;
-  if (outcome.incrementAttackerErrors) {
-    attackerErrors += 1;
+    return NextResponse.json({
+      ok: true,
+      evaluation: result.evaluation,
+      gameFinished: result.gameFinished,
+      winnerPlayerId: result.winnerPlayerId,
+      nextTurnPlayerId: result.nextTurnPlayerId,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Guess failed";
+    return NextResponse.json({ error: msg }, { status: 400 });
   }
-
-  const attackerAlive = outcome.eliminateAttacker ? false : attacker.is_alive;
-  const targetAlive = outcome.eliminateTarget ? false : target.is_alive;
-
-  const simPlayers = allPlayers.map((p) => {
-    if (p.id === attacker.id) return { ...p, is_alive: attackerAlive };
-    if (p.id === target.id) return { ...p, is_alive: targetAlive };
-    return p;
-  });
-
-  const living = simPlayers.filter((p) => p.is_alive);
-  const gameFinished = living.length <= 1;
-  const winnerId = gameFinished && living.length === 1 ? living[0]!.id : null;
-
-  let nextTurn = outcome.nextAttackerId;
-  if (gameFinished) {
-    nextTurn = winnerId;
-  }
-
-  if (outcome.revelationPatch) {
-    const { error: revErr } = await admin
-      .from("revelations")
-      .update({
-        shape_known: outcome.revelationPatch.shape_known,
-        color_known: outcome.revelationPatch.color_known,
-        shape: outcome.revelationPatch.shape,
-        color: outcome.revelationPatch.color,
-      })
-      .eq("room_id", roomId)
-      .eq("player_id", targetId);
-
-    if (revErr) {
-      return NextResponse.json({ error: revErr.message }, { status: 500 });
-    }
-  }
-
-  if (outcome.incrementAttackerErrors || outcome.eliminateAttacker) {
-    const { error: ae } = await admin
-      .from("players")
-      .update({
-        errors: attackerErrors,
-        is_alive: attackerAlive,
-      })
-      .eq("id", attacker.id);
-    if (ae) {
-      return NextResponse.json({ error: ae.message }, { status: 500 });
-    }
-  }
-
-  if (outcome.eliminateTarget) {
-    const { error: te } = await admin
-      .from("players")
-      .update({ is_alive: false })
-      .eq("id", targetId);
-    if (te) {
-      return NextResponse.json({ error: te.message }, { status: 500 });
-    }
-  }
-
-  if (gameFinished) {
-    const { error: fe } = await admin
-      .from("rooms")
-      .update({
-        status: "finished",
-        current_turn_player_id: winnerId,
-      })
-      .eq("id", roomId);
-    if (fe) {
-      return NextResponse.json({ error: fe.message }, { status: 500 });
-    }
-  } else {
-    const { error: re } = await admin
-      .from("rooms")
-      .update({ current_turn_player_id: nextTurn })
-      .eq("id", roomId);
-    if (re) {
-      return NextResponse.json({ error: re.message }, { status: 500 });
-    }
-  }
-
-  const { error: gErr } = await admin.from("guesses").insert({
-    room_id: roomId,
-    attacker_id: attacker.id,
-    target_id: targetId,
-    shape: guess.shape,
-    color: guess.color,
-    correct: outcome.evaluation.correct,
-    shape_match: outcome.evaluation.shapeMatch,
-    color_match: outcome.evaluation.colorMatch,
-  });
-
-  if (gErr) {
-    return NextResponse.json({ error: gErr.message }, { status: 500 });
-  }
-
-  return NextResponse.json({
-    ok: true,
-    evaluation: outcome.evaluation,
-    gameFinished,
-    winnerPlayerId: winnerId,
-    nextTurnPlayerId: nextTurn,
-  });
 }

@@ -9,7 +9,7 @@ export function GameBoard({
   myPlayerId,
   currentTurnPlayerId,
 }: {
-  players: Pick<PlayerRow, "id" | "name" | "errors" | "is_alive">[];
+  players: Pick<PlayerRow, "id" | "name" | "errors" | "is_alive" | "is_bot">[];
   revelations: RevelationRow[];
   myPlayerId: string;
   currentTurnPlayerId: string | null;

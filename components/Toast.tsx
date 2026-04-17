@@ -40,9 +40,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             key={t.id}
             className={[
               "pointer-events-auto rounded-lg border px-4 py-2 text-sm shadow-lg backdrop-blur",
-              t.tone === "ok" && "border-emerald-500/40 bg-emerald-950/90 text-emerald-50",
-              t.tone === "err" && "border-rose-500/40 bg-rose-950/90 text-rose-50",
-              t.tone === "info" && "border-zinc-600 bg-zinc-900/95 text-zinc-100",
+              t.tone === "ok" &&
+                "border-success/50 bg-success/15 text-foreground dark:bg-success/20",
+              t.tone === "err" &&
+                "border-danger/50 bg-danger/15 text-foreground dark:bg-danger/20",
+              t.tone === "info" && "border-border bg-surface/95 text-foreground backdrop-blur",
             ]
               .filter(Boolean)
               .join(" ")}

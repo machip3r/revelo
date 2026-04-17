@@ -18,7 +18,9 @@ export async function GET(request: Request) {
 
   const { data: room, error: rErr } = await admin
     .from("rooms")
-    .select("id, code, status, host_user_id, current_turn_player_id, created_at")
+    .select(
+      "id, code, status, host_user_id, current_turn_player_id, created_at, is_public, lobby_autofill_next_at",
+    )
     .eq("code", code)
     .maybeSingle();
 
@@ -31,7 +33,7 @@ export async function GET(request: Request) {
 
   const { data: players } = await admin
     .from("players")
-    .select("id, name, errors, is_alive, turn_order, user_id")
+    .select("id, name, errors, is_alive, turn_order, user_id, is_bot")
     .eq("room_id", room.id)
     .order("turn_order", { ascending: true });
 

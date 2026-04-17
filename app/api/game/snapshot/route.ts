@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 
   const { data: players } = await admin
     .from("players")
-    .select("id, name, errors, is_alive, turn_order, user_id")
+    .select("id, name, errors, is_alive, turn_order, user_id, is_bot")
     .eq("room_id", roomId)
     .order("turn_order", { ascending: true });
 

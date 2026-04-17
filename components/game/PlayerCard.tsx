@@ -4,9 +4,9 @@ import type { Color, PlayerRow, RevelationRow, Shape } from "@/lib/types";
 import { MAX_ERRORS } from "@/lib/constants";
 
 function ShapeIcon({ shape, muted }: { shape: Shape | null; muted?: boolean }) {
-  const cls = muted ? "text-zinc-600" : "text-zinc-200";
+  const cls = muted ? "text-faint" : "text-foreground";
   if (!shape) {
-    return <span className="text-xs text-zinc-500">?</span>;
+    return <span className="text-xs text-muted">?</span>;
   }
   if (shape === "circle") {
     return (
@@ -33,16 +33,16 @@ function ShapeIcon({ shape, muted }: { shape: Shape | null; muted?: boolean }) {
 
 function ColorDot({ color, muted }: { color: Color | null; muted?: boolean }) {
   if (!color) {
-    return <span className="text-xs text-zinc-500">?</span>;
+    return <span className="text-xs text-muted">?</span>;
   }
   const map: Record<Color, string> = {
-    red: "bg-red-500",
-    blue: "bg-blue-500",
-    green: "bg-emerald-500",
+    red: "bg-game-red",
+    blue: "bg-game-blue",
+    green: "bg-game-green",
   };
   return (
     <span
-      className={`inline-block h-4 w-4 rounded-full ring-2 ring-zinc-700 ${map[color]} ${muted ? "opacity-40" : ""}`}
+      className={`inline-block h-4 w-4 rounded-full ring-2 ring-border ${map[color]} ${muted ? "opacity-40" : ""}`}
       title={color}
     />
   );
@@ -54,7 +54,7 @@ export function PlayerCard({
   isYou,
   isCurrentTurn,
 }: {
-  player: Pick<PlayerRow, "id" | "name" | "errors" | "is_alive">;
+  player: Pick<PlayerRow, "id" | "name" | "errors" | "is_alive" | "is_bot">;
   revelation: Pick<
     RevelationRow,
     "shape_known" | "color_known" | "shape" | "color"
@@ -66,36 +66,54 @@ export function PlayerCard({
   return (
     <div
       className={[
-        "relative flex flex-col gap-2 rounded-xl border p-4 transition",
+        "relative flex flex-col gap-2 rounded-xl border p-4 transition-shadow duration-200",
         dead && "opacity-50 grayscale",
-        isCurrentTurn && "border-amber-400/80 ring-2 ring-amber-400/30",
-        !isCurrentTurn && "border-zinc-800 bg-zinc-950/60",
+        isCurrentTurn &&
+          "border-turn bg-surface shadow-[0_0_24px_var(--turn-ring)] ring-2 ring-turn/35",
+        !isCurrentTurn && "border-border bg-surface/80",
       ]
         .filter(Boolean)
         .join(" ")}
     >
       {isCurrentTurn && (
-        <span className="absolute -right-1 -top-2 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200">
+        <span className="absolute -right-1 -top-2 rounded-full bg-turn/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-turn">
           Turn
         </span>
       )}
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <div className="truncate font-medium text-zinc-100">
+          <div className="truncate font-medium text-foreground">
             {player.name}
+            {player.is_bot && (
+              <span className="ml-2 text-xs font-normal text-game-blue">(bot)</span>
+            )}
             {isYou && (
-              <span className="ml-2 text-xs font-normal text-violet-300">(you)</span>
+              <span className="ml-2 text-xs font-normal text-accent-hover">(you)</span>
             )}
           </div>
-          <div className="text-xs text-zinc-500">
-            Errors {player.errors}/{MAX_ERRORS}
+          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted">
+            <span>Errors</span>
+            <span className="flex gap-0.5" aria-hidden>
+              {Array.from({ length: MAX_ERRORS }).map((_, i) => (
+                <span
+                  key={i}
+                  className={[
+                    "h-2 w-2 rounded-full",
+                    i < player.errors ? "bg-danger" : "bg-border",
+                  ].join(" ")}
+                />
+              ))}
+            </span>
+            <span className="tabular-nums">
+              {player.errors}/{MAX_ERRORS}
+            </span>
           </div>
         </div>
-        <div className="text-xs font-medium uppercase text-zinc-400">
+        <div className="text-xs font-medium uppercase text-muted">
           {dead ? "Out" : "Alive"}
         </div>
       </div>
-      <div className="flex items-center justify-between border-t border-zinc-800/80 pt-2 text-xs text-zinc-400">
+      <div className="flex items-center justify-between border-t border-border/80 pt-2 text-xs text-muted">
         <span className="flex items-center gap-2">
           Shape:{" "}
           <ShapeIcon

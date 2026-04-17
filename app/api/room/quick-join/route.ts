@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { MAX_PLAYERS } from "@/lib/constants";
+import { LOBBY_AUTOFILL_FIRST_DELAY_MS, MAX_PLAYERS } from "@/lib/constants";
 import { generateRoomCode } from "@/lib/roomCode";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -120,6 +120,10 @@ export async function POST(request: Request) {
 
   for (let attempt = 0; attempt < 8; attempt++) {
     const code = generateRoomCode();
+    const autofillAt = new Date(
+      Date.now() + LOBBY_AUTOFILL_FIRST_DELAY_MS,
+    ).toISOString();
+
     const { data: room, error: roomErr } = await admin
       .from("rooms")
       .insert({
@@ -128,6 +132,7 @@ export async function POST(request: Request) {
         status: "waiting",
         host_user_id: user.id,
         current_turn_player_id: null,
+        lobby_autofill_next_at: autofillAt,
       })
       .select("id, code")
       .single();

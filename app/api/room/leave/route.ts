@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { nextTurnDeadlineIso } from "@/lib/turnDeadline";
 
 function nextAliveAfter(
   players: { id: string; is_alive: boolean; turn_order: number }[],
@@ -114,7 +115,7 @@ export async function POST(request: Request) {
 
   const { data: allPlayers, error: allErr } = await admin
     .from("players")
-    .select("id, is_alive, turn_order")
+    .select("id, is_alive, turn_order, is_bot")
     .eq("room_id", roomId);
 
   if (allErr || !allPlayers) {
@@ -129,6 +130,7 @@ export async function POST(request: Request) {
       .update({
         status: "finished",
         current_turn_player_id: winnerId,
+        turn_deadline_at: null,
       })
       .eq("id", roomId);
     if (finishErr) {
@@ -139,9 +141,15 @@ export async function POST(request: Request) {
 
   if (room.current_turn_player_id === me.id) {
     const nextTurn = nextAliveAfter(allPlayers, me.id);
+    const deadline = nextTurn
+      ? nextTurnDeadlineIso(nextTurn, allPlayers)
+      : null;
     const { error: turnErr } = await admin
       .from("rooms")
-      .update({ current_turn_player_id: nextTurn })
+      .update({
+        current_turn_player_id: nextTurn,
+        turn_deadline_at: deadline,
+      })
       .eq("id", roomId);
     if (turnErr) {
       return NextResponse.json({ error: turnErr.message }, { status: 500 });

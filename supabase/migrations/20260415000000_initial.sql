@@ -23,6 +23,8 @@ create table public.rooms (
   status room_status not null default 'waiting',
   host_user_id uuid not null references public.users (id) on delete restrict,
   current_turn_player_id uuid,
+  turn_deadline_at timestamptz,
+  lobby_autofill_next_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -30,12 +32,16 @@ create table public.rooms (
 create table public.players (
   id uuid primary key default gen_random_uuid(),
   room_id uuid not null references public.rooms (id) on delete cascade,
-  user_id uuid not null references public.users (id) on delete cascade,
+  user_id uuid references public.users (id) on delete cascade,
+  is_bot boolean not null default false,
   name text not null,
   errors int not null default 0 check (errors >= 0 and errors <= 2),
   is_alive boolean not null default true,
   turn_order int not null default 0,
-  unique (room_id, user_id)
+  unique (room_id, user_id),
+  constraint players_human_or_bot check (
+    (is_bot = true and user_id is null) or (is_bot = false and user_id is not null)
+  )
 );
 
 alter table public.rooms

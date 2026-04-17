@@ -20,6 +20,9 @@ type Snapshot = {
     status: string;
     host_user_id: string;
     current_turn_player_id: string | null;
+    is_public: boolean;
+    lobby_autofill_next_at: string | null;
+    created_at: string;
   };
   players: {
     id: string;
@@ -27,7 +30,8 @@ type Snapshot = {
     errors: number;
     is_alive: boolean;
     turn_order: number;
-    user_id: string;
+    user_id: string | null;
+    is_bot: boolean;
   }[];
   myPlayerId: string | null;
   isHost: boolean;
@@ -127,6 +131,25 @@ export function RoomClient({ code }: { code: string }) {
       void supabase.removeChannel(channel);
     };
   }, [sessionReady, snap?.room.id, snap?.room.status, load]);
+
+  useEffect(() => {
+    if (!sessionReady || !snap?.room.id) return;
+    if (snap.room.status !== "waiting") return;
+    if (!snap.room.is_public) return;
+
+    const tick = () => {
+      void fetch("/api/room/autofill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId: snap.room.id }),
+      }).then(() => {
+        void load();
+      });
+    };
+
+    const id = window.setInterval(tick, 4000);
+    return () => window.clearInterval(id);
+  }, [sessionReady, snap?.room.id, snap?.room.status, snap?.room.is_public, load]);
 
   async function joinFromLink() {
     const n = joinName.trim();
@@ -233,15 +256,15 @@ export function RoomClient({ code }: { code: string }) {
   if (!snap.myPlayerId && snap.room.status === "waiting") {
     return (
       <div className="mx-auto w-full max-w-lg flex-1 px-4 py-12">
-        <h1 className="text-2xl font-semibold text-zinc-100">Join room</h1>
-        <p className="mt-2 text-sm text-zinc-500">
+        <h1 className="text-2xl font-semibold text-foreground">Join room</h1>
+        <p className="mt-2 text-sm text-muted">
           Code{" "}
-          <span className="font-mono tracking-widest text-violet-300">{code}</span>
+          <span className="font-mono tracking-widest text-accent-hover">{code}</span>
         </p>
-        <label className="mt-6 block text-xs font-medium uppercase tracking-wide text-zinc-500">
+        <label className="mt-6 block text-xs font-medium uppercase tracking-wide text-muted">
           Display name
           <input
-            className="mt-1 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/40"
+            className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-accent/40"
             value={joinName}
             onChange={(e) => setJoinName(e.target.value)}
             maxLength={40}
@@ -251,11 +274,11 @@ export function RoomClient({ code }: { code: string }) {
           type="button"
           disabled={busy}
           onClick={() => void joinFromLink()}
-          className="mt-6 w-full rounded-xl bg-violet-600 py-3 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-40"
+          className="mt-6 w-full rounded-xl bg-gradient-to-r from-accent to-accent-hover py-3 text-sm font-semibold text-white shadow-[0_6px_24px_var(--accent-glow)] hover:brightness-110 disabled:opacity-40"
         >
           Join
         </button>
-        <Link href="/" className="mt-4 block text-center text-sm text-zinc-500 hover:text-zinc-300">
+        <Link href="/" className="mt-4 block text-center text-sm text-muted hover:text-foreground">
           Back home
         </Link>
       </div>
@@ -263,6 +286,7 @@ export function RoomClient({ code }: { code: string }) {
   }
 
   const count = snap.players.length;
+  const humanCount = snap.players.filter((p) => !p.is_bot).length;
   const canStart =
     snap.isHost &&
     snap.room.status === "waiting" &&
@@ -273,10 +297,10 @@ export function RoomClient({ code }: { code: string }) {
     <div className="mx-auto w-full max-w-lg flex-1 px-4 py-12">
       <div className="mb-8 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-100">Lobby</h1>
-          <p className="text-sm text-zinc-500">
+          <h1 className="text-2xl font-semibold text-foreground">Lobby</h1>
+          <p className="text-sm text-muted">
             Code{" "}
-            <span className="font-mono text-lg tracking-widest text-violet-300">
+            <span className="font-mono text-lg tracking-widest text-accent-hover">
               {snap.room.code}
             </span>
           </p>
@@ -287,7 +311,7 @@ export function RoomClient({ code }: { code: string }) {
               type="button"
               disabled={busy}
               onClick={() => void closeLobby()}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-100 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-40"
             >
               Close lobby
             </button>
@@ -296,15 +320,15 @@ export function RoomClient({ code }: { code: string }) {
               type="button"
               disabled={busy}
               onClick={() => void leaveLobby()}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-100 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-40"
             >
               Leave lobby
             </button>
           ))}
       </div>
 
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-950/50 p-6">
-        <div className="mb-4 flex items-center justify-between text-sm text-zinc-400">
+      <div className="rounded-2xl border border-border bg-surface/80 p-6">
+        <div className="mb-4 flex items-center justify-between text-sm text-muted">
           <span>
             Players ({count}/{MAX_PLAYERS})
           </span>
@@ -316,16 +340,19 @@ export function RoomClient({ code }: { code: string }) {
           {snap.players.map((p) => (
             <li
               key={p.id}
-              className="flex items-center justify-between rounded-lg border border-zinc-800/80 bg-zinc-900/40 px-3 py-2 text-sm"
+              className="flex items-center justify-between rounded-lg border border-border/80 bg-surface-elevated/50 px-3 py-2 text-sm"
             >
-              <span className="text-zinc-200">
+              <span className="text-foreground">
                 {p.name}
+                {p.is_bot && (
+                  <span className="ml-2 text-xs text-game-blue">(bot)</span>
+                )}
                 {p.id === snap.myPlayerId && (
-                  <span className="ml-2 text-xs text-violet-400">(you)</span>
+                  <span className="ml-2 text-xs text-accent-hover">(you)</span>
                 )}
               </span>
-              {snap.room.host_user_id === p.user_id && (
-                <span className="text-[10px] font-semibold uppercase text-amber-300/90">
+              {p.user_id && snap.room.host_user_id === p.user_id && (
+                <span className="text-[10px] font-semibold uppercase text-warning">
                   Host
                 </span>
               )}
@@ -334,9 +361,16 @@ export function RoomClient({ code }: { code: string }) {
         </ul>
 
         {snap.room.status === "waiting" && (
-          <p className="mt-4 text-xs text-zinc-500">
+          <p className="mt-4 text-xs text-muted">
             Need {MIN_PLAYERS}–{MAX_PLAYERS} players. Host starts when everyone
             is ready.
+            {snap.room.is_public && humanCount < MIN_PLAYERS && (
+              <>
+                {" "}
+                In public matchmaking, bots join over time (up to {MAX_PLAYERS}{" "}
+                total) when fewer than {MIN_PLAYERS} humans are waiting.
+              </>
+            )}
           </p>
         )}
 
@@ -346,7 +380,7 @@ export function RoomClient({ code }: { code: string }) {
               type="button"
               disabled={!canStart || busy}
               onClick={startGame}
-              className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+              className="w-full rounded-xl bg-success py-3 text-sm font-semibold text-white shadow-[0_6px_24px_rgba(34,197,94,0.25)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {!canStart
                 ? count < MIN_PLAYERS

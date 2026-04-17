@@ -1,19 +1,75 @@
 @import "tailwindcss";
 
+/* Light (default when .dark is absent) */
 :root {
-  --background: #09090b;
-  --foreground: #fafafa;
+  --canvas: #f8fafc;
+  --surface: #ffffff;
+  --surface-elevated: #f1f5f9;
+  --border: #e2e8f0;
+  --foreground: #0f172a;
+  --muted: #475569;
+  --faint: #64748b;
+  --accent: #7c3aed;
+  --accent-hover: #8b5cf6;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --turn: #facc15;
+  --turn-ring: rgba(250, 204, 21, 0.35);
+  --accent-glow: rgba(124, 58, 237, 0.4);
+  --game-red: #ef4444;
+  --game-blue: #3b82f6;
+  --game-green: #22c55e;
+  --overlay: rgba(15, 23, 42, 0.45);
+  --secret-tint: rgba(124, 58, 237, 0.08);
+}
+
+.dark {
+  --canvas: #0b0f14;
+  --surface: #121821;
+  --surface-elevated: #1a2332;
+  --border: #1f2937;
+  --foreground: #e5e7eb;
+  --muted: #9ca3af;
+  --faint: #6b7280;
+  --accent: #7c3aed;
+  --accent-hover: #8b5cf6;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --turn: #facc15;
+  --turn-ring: rgba(250, 204, 21, 0.35);
+  --accent-glow: rgba(124, 58, 237, 0.45);
+  --game-red: #ef4444;
+  --game-blue: #3b82f6;
+  --game-green: #22c55e;
+  --overlay: rgba(0, 0, 0, 0.65);
+  --secret-tint: rgba(124, 58, 237, 0.12);
 }
 
 @theme inline {
-  --color-background: var(--background);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-border: var(--border);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-turn: var(--turn);
+  --color-game-red: var(--game-red);
+  --color-game-blue: var(--game-blue);
+  --color-game-green: var(--game-green);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--background);
+  background: var(--canvas);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }

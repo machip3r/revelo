@@ -130,19 +130,19 @@ export default function HomePage() {
   return (
     <div className="mx-auto flex min-h-full max-w-lg flex-col justify-center px-4 py-16">
       <div className="mb-10 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-50">
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
           Revelo
         </h1>
-        <p className="mt-2 text-sm text-zinc-500">
+        <p className="mt-2 text-sm text-muted">
           Real-time deduction for {MIN_PLAYERS}–{MAX_PLAYERS} players. Guess
           shapes & colors — last one standing wins.
         </p>
       </div>
 
-      <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500">
+      <label className="block text-xs font-medium uppercase tracking-wide text-muted">
         Display name
         <input
-          className="mt-1 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none ring-violet-500/0 transition focus:ring-2 focus:ring-violet-500/40"
+          className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-accent/40"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="How others see you"
@@ -155,7 +155,7 @@ export default function HomePage() {
           type="button"
           disabled={busy || !ready}
           onClick={playSolo}
-          className="w-full rounded-xl bg-emerald-700 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-900/30 hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-xl bg-success py-3 text-sm font-semibold text-white shadow-[0_8px_28px_rgba(34,197,94,0.25)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Solo vs bots
         </button>
@@ -164,29 +164,29 @@ export default function HomePage() {
           type="button"
           disabled={busy || !ready}
           onClick={quickMatch}
-          className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-900/30 hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-xl bg-accent/90 py-3 text-sm font-semibold text-white shadow-[0_8px_28px_var(--accent-glow)] hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Public game
+          Public room
         </button>
 
         <button
           type="button"
           disabled={busy || !ready}
           onClick={createRoom}
-          className="w-full rounded-xl bg-violet-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/30 hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-xl bg-gradient-to-r from-accent to-accent-hover py-3 text-sm font-semibold text-white shadow-[0_8px_32px_var(--accent-glow)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Create room
+          Private room
         </button>
 
-        <div className="relative py-2 text-center text-xs uppercase tracking-widest text-zinc-600">
-          <span className="relative z-10 bg-[var(--background)] px-2">or</span>
-          <span className="absolute inset-x-0 top-1/2 h-px bg-zinc-800" />
+        <div className="relative py-2 text-center text-xs uppercase tracking-widest text-faint">
+          <span className="relative z-10 bg-canvas px-2">or</span>
+          <span className="absolute inset-x-0 top-1/2 h-px bg-border" />
         </div>
 
-        <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500">
+        <label className="block text-xs font-medium uppercase tracking-wide text-muted">
           Room Code
           <input
-            className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/40"
+            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-accent/40"
             value={joinCode}
             onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
             placeholder="Code to join"
@@ -197,15 +197,15 @@ export default function HomePage() {
           type="button"
           disabled={busy || !ready}
           onClick={joinRoom}
-          className="w-full rounded-xl border border-zinc-700 py-3 text-sm font-semibold text-zinc-100 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-xl border border-border py-3 text-sm font-semibold text-foreground hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-40"
         >
           Join room
         </button>
       </div>
 
-      <p className="mt-10 text-center text-xs text-zinc-600">
+      <p className="mt-10 text-center text-xs text-faint">
         Developed with ♥︎ by{" "}
-        <code className="rounded bg-zinc-900 px-1 py-0.5 text-zinc-400">
+        <code className="rounded bg-surface-elevated px-1 py-0.5 text-muted">
           MacHip3r
         </code>
       </p>

@@ -5,6 +5,8 @@ import { GuessModal } from "@/components/game/GuessModal";
 import { HistoryLog } from "@/components/game/HistoryLog";
 import { useSession } from "@/components/SessionRoot";
 import { Spinner } from "@/components/Spinner";
+import { randomBotActionDelayMs } from "@/lib/botGuess";
+import { TURN_TIME_LIMIT_SECONDS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import type { Color, GuessRow, PlayerRow, RevelationRow, RoomRow, Shape } from "@/lib/types";
 import { useToast } from "@/components/Toast";
@@ -127,6 +129,78 @@ export function GameClient({ roomId }: { roomId: string }) {
     return snap.room.current_turn_player_id === snap.myPlayerId;
   }, [snap]);
 
+  const currentTurnPlayer = useMemo(() => {
+    if (!snap?.room.current_turn_player_id) return null;
+    return (
+      snap.players.find((p) => p.id === snap.room.current_turn_player_id) ??
+      null
+    );
+  }, [snap]);
+
+  const [nowTick, setNowTick] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!snap || snap.room.status !== "playing") return;
+    if (!myTurn || !snap.room.turn_deadline_at) return;
+    const t = window.setInterval(() => setNowTick(Date.now()), 500);
+    return () => window.clearInterval(t);
+  }, [snap, myTurn]);
+
+  const secondsLeft =
+    myTurn && snap?.room.turn_deadline_at
+      ? Math.max(
+          0,
+          Math.ceil(
+            (new Date(snap.room.turn_deadline_at).getTime() - nowTick) / 1000,
+          ),
+        )
+      : null;
+
+  useEffect(() => {
+    if (!sessionReady || snap?.room.status !== "playing") return;
+    const cur = currentTurnPlayer;
+    if (!cur?.is_bot || !cur.is_alive) return;
+
+    const t = window.setTimeout(() => {
+      void fetch("/api/game/bot-turn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId }),
+      }).then((res) => {
+        if (res.ok) void load();
+      });
+    }, randomBotActionDelayMs());
+
+    return () => window.clearTimeout(t);
+  }, [
+    sessionReady,
+    roomId,
+    load,
+    currentTurnPlayer?.id,
+    currentTurnPlayer?.is_bot,
+    currentTurnPlayer?.is_alive,
+    snap?.room.status,
+  ]);
+
+  useEffect(() => {
+    if (!sessionReady || snap?.room.status !== "playing") return;
+    const deadline = snap?.room.turn_deadline_at;
+    if (!deadline) return;
+
+    const interval = window.setInterval(() => {
+      if (Date.now() <= new Date(deadline).getTime()) return;
+      void fetch("/api/game/turn-timeout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId }),
+      }).then((res) => {
+        if (res.ok) void load();
+      });
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [sessionReady, snap?.room.turn_deadline_at, snap?.room.status, roomId, load]);
+
   async function submitGuess(targetId: string, shape: Shape, color: Color) {
     setBusy(true);
     try {
@@ -245,14 +319,14 @@ export function GameClient({ roomId }: { roomId: string }) {
   if (finished) {
     return (
       <div className="mx-auto flex min-h-full w-full max-w-2xl items-center justify-center px-4 py-10">
-        <div className="w-full rounded-2xl border border-zinc-800 bg-zinc-950/80 p-8 text-center shadow-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300/90">
+        <div className="w-full rounded-2xl border border-border bg-surface/90 p-8 text-center shadow-2xl shadow-black/20">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-warning">
             Game Finished
           </p>
-          <h1 className="mt-4 text-3xl font-semibold text-zinc-100">
+          <h1 className="mt-4 text-3xl font-semibold text-foreground">
             {winner ? `${winner.name} wins` : "Match completed"}
           </h1>
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-2 text-sm text-muted">
             {snap.isHost
               ? "Start another round with the same players, or close this room."
               : "Only the host can restart or close this room."}
@@ -265,7 +339,7 @@ export function GameClient({ roomId }: { roomId: string }) {
                   type="button"
                   disabled={resultBusy}
                   onClick={() => void restartGame()}
-                  className="rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-xl bg-gradient-to-r from-accent to-accent-hover px-5 py-3 text-sm font-semibold text-white shadow-[0_6px_24px_var(--accent-glow)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Play again
                 </button>
@@ -273,7 +347,7 @@ export function GameClient({ roomId }: { roomId: string }) {
                   type="button"
                   disabled={resultBusy}
                   onClick={() => setShowCloseDialog(true)}
-                  className="rounded-xl border border-zinc-700 px-5 py-3 text-sm font-semibold text-zinc-100 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-xl border border-border px-5 py-3 text-sm font-semibold text-foreground hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Close room
                 </button>
@@ -281,7 +355,7 @@ export function GameClient({ roomId }: { roomId: string }) {
             ) : (
               <Link
                 href="/"
-                className="rounded-xl border border-zinc-700 px-5 py-3 text-sm font-semibold text-zinc-100 hover:bg-zinc-900"
+                className="rounded-xl border border-border px-5 py-3 text-sm font-semibold text-foreground hover:bg-surface-elevated"
               >
                 Leave
               </Link>
@@ -289,10 +363,10 @@ export function GameClient({ roomId }: { roomId: string }) {
           </div>
         </div>
         {showCloseDialog && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-950 p-6 text-left shadow-2xl">
-              <h2 className="text-lg font-semibold text-zinc-100">Close room?</h2>
-              <p className="mt-2 text-sm text-zinc-500">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 text-left shadow-2xl">
+              <h2 className="text-lg font-semibold text-foreground">Close room?</h2>
+              <p className="mt-2 text-sm text-muted">
                 This will remove this room and all match data for everyone.
               </p>
               <div className="mt-6 flex justify-end gap-2">
@@ -300,7 +374,7 @@ export function GameClient({ roomId }: { roomId: string }) {
                   type="button"
                   disabled={resultBusy}
                   onClick={() => setShowCloseDialog(false)}
-                  className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Cancel
                 </button>
@@ -308,7 +382,7 @@ export function GameClient({ roomId }: { roomId: string }) {
                   type="button"
                   disabled={resultBusy}
                   onClick={() => void closeRoom()}
-                  className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg bg-danger px-4 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Confirm close
                 </button>
@@ -323,28 +397,28 @@ export function GameClient({ roomId }: { roomId: string }) {
   return (
     <div
       className={[
-        "relative mx-auto w-full max-w-5xl flex-1 px-4 py-8 transition",
-        flash === "ok" && "bg-emerald-500/5",
-        flash === "bad" && "bg-rose-500/5",
+        "relative mx-auto w-full max-w-5xl flex-1 px-4 py-8 transition duration-200",
+        flash === "ok" && "bg-success/5",
+        flash === "bad" && "bg-danger/5",
       ]
         .filter(Boolean)
         .join(" ")}
     >
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-100">In session</h1>
-          <p className="text-sm text-zinc-500">
+          <h1 className="text-2xl font-semibold text-foreground">In session</h1>
+          <p className="text-sm text-muted">
             Room code{" "}
-            <span className="font-mono text-violet-300">{snap.room.code}</span>
+            <span className="font-mono text-accent-hover">{snap.room.code}</span>
           </p>
         </div>
         {snap.myCombination && (
           <div className="flex items-center gap-3">
-            <div className="rounded-xl border border-violet-500/30 bg-violet-950/40 px-4 py-2 text-sm">
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-300/90">
+            <div className="rounded-xl border border-accent/35 bg-[var(--secret-tint)] px-4 py-2 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-accent-hover">
                 Your secret
               </div>
-              <div className="mt-1 font-medium text-zinc-100">
+              <div className="mt-1 font-medium text-foreground">
                 {snap.myCombination.color} {snap.myCombination.shape}
               </div>
             </div>
@@ -353,7 +427,7 @@ export function GameClient({ roomId }: { roomId: string }) {
                 type="button"
                 disabled={resultBusy}
                 onClick={() => setShowCloseDialog(true)}
-                className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-100 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Close room
               </button>
@@ -362,7 +436,7 @@ export function GameClient({ roomId }: { roomId: string }) {
                 type="button"
                 disabled={resultBusy}
                 onClick={() => void leaveGame()}
-                className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-100 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Leave
               </button>
@@ -372,7 +446,7 @@ export function GameClient({ roomId }: { roomId: string }) {
       </div>
 
       {finished && (
-        <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-950/30 px-4 py-3 text-sm text-amber-100">
+        <div className="mb-6 rounded-xl border border-warning/35 bg-warning/10 px-4 py-3 text-sm text-foreground">
           Game finished
           {winner && (
             <>
@@ -383,18 +457,25 @@ export function GameClient({ roomId }: { roomId: string }) {
       )}
 
       {!finished && (
-        <div className="mb-6 rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-3 text-sm text-zinc-300">
+        <div className="mb-6 rounded-xl border border-border bg-surface/70 px-4 py-3 text-sm text-muted">
           {myTurn ? (
-            <span className="text-emerald-300">Your turn — make a guess.</span>
+            <span className="text-success">
+              Your turn — make a guess.
+              {secondsLeft !== null && (
+                <span className="ml-2 text-faint">
+                  ({secondsLeft}s / {TURN_TIME_LIMIT_SECONDS}s)
+                </span>
+              )}
+            </span>
           ) : (
             <span>
               Waiting for{" "}
-              <span className="font-medium text-zinc-100">
+              <span className="font-medium text-foreground">
                 {snap.players.find(
                   (p) => p.id === snap.room.current_turn_player_id,
                 )?.name ?? "…"}
               </span>
-              .
+              {currentTurnPlayer?.is_bot ? " (bot)" : ""}.
             </span>
           )}
         </div>
@@ -415,7 +496,7 @@ export function GameClient({ roomId }: { roomId: string }) {
             <button
               type="button"
               onClick={() => setGuessOpen(true)}
-              className="rounded-xl bg-violet-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/30 hover:bg-violet-500"
+              className="rounded-xl bg-gradient-to-r from-accent to-accent-hover py-3 text-sm font-semibold text-white shadow-[0_8px_32px_var(--accent-glow)] hover:brightness-110"
             >
               Guess a player
             </button>
@@ -433,10 +514,10 @@ export function GameClient({ roomId }: { roomId: string }) {
         onSubmit={(tid, s, c) => void submitGuess(tid, s, c)}
       />
       {showCloseDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-950 p-6 text-left shadow-2xl">
-            <h2 className="text-lg font-semibold text-zinc-100">Close room?</h2>
-            <p className="mt-2 text-sm text-zinc-500">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 text-left shadow-2xl">
+            <h2 className="text-lg font-semibold text-foreground">Close room?</h2>
+            <p className="mt-2 text-sm text-muted">
               This will remove this room and all match data for everyone.
             </p>
             <div className="mt-6 flex justify-end gap-2">
@@ -444,7 +525,7 @@ export function GameClient({ roomId }: { roomId: string }) {
                 type="button"
                 disabled={resultBusy}
                 onClick={() => setShowCloseDialog(false)}
-                className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Cancel
               </button>
@@ -452,7 +533,7 @@ export function GameClient({ roomId }: { roomId: string }) {
                 type="button"
                 disabled={resultBusy}
                 onClick={() => void closeRoom()}
-                className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-lg bg-danger px-4 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Confirm close
               </button>

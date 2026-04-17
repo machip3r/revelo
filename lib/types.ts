@@ -15,13 +15,16 @@ export interface RoomRow {
   status: RoomStatus;
   host_user_id: string;
   current_turn_player_id: string | null;
+  turn_deadline_at: string | null;
+  lobby_autofill_next_at: string | null;
   created_at: string;
 }
 
 export interface PlayerRow {
   id: string;
   room_id: string;
-  user_id: string;
+  user_id: string | null;
+  is_bot: boolean;
   name: string;
   errors: number;
   is_alive: boolean;
